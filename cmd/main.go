@@ -3,17 +3,36 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"os"
 
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 )
 
 var router *gin.Engine
 
 func main() {
+	// Initialise Sentry
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:              os.Getenv("SENTRY_DSN"),
+		Debug:            true,
+		AttachStacktrace: true,
+	}); err != nil {
+		log.Printf("Sentry initialization failed: %v\n", err)
+	}
 
 	// Set the router as the default one provided by Gin
 	router = gin.Default()
+
+	// Load middleware
+	router.Use(sentrygin.New(sentrygin.Options{
+		Repanic: true,
+	}))
+	router.Use(sentryHandler())
+	router.Use(errorHandler())
 
 	// Process the templates at the start so that they don't have to be loaded
 	// from the disk again. This makes serving HTML pages very fast.
